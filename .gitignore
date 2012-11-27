@@ -1,3 +1,15 @@
+CMakeFiles/
+CMakeLists.txt
+CMakeCache.txt
+
+thirdparty\
+
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+*.cmake
+
 #################
 ## Eclipse
 #################
