@@ -5,6 +5,13 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 # Where to search for cmake scripts
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+## Path to a file.
+SET(JPEG_INCLUDE_DIR "C:/Program Files (x86)/GnuWin32/include")
+
+# Path to a library.
+SET(JPEG_LIBRARY "C:/Program Files (x86)/GnuWin32/lib/jpeg.lib")
+
+
 # Build subdirectories
 ADD_SUBDIRECTORY(thirdparty/ImageLib)
 ADD_SUBDIRECTORY(thirdparty/libsvm-3.14)
