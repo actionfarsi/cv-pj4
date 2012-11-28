@@ -121,7 +121,7 @@ SupportVectorMachine::train(const std::vector<float>& labels, const FeatureSet& 
 		
 
 
-		_data[j].value=fset[j].Pixel(xval,yval,bval);
+		_data[j].value=fset[floor((double)j/(dim+1))].Pixel(xval,yval,bval);
 
 
 	}
