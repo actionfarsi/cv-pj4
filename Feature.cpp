@@ -78,7 +78,17 @@ TinyImageFeatureExtractor::operator()(const CByteImage& img_) const
 	// Useful functions:
 	// convertRGB2GrayImage, TypeConvert, WarpGlobal
 
-	printf("TODO: Feature.cpp:80\n"); exit(EXIT_FAILURE); 
+	
+	CByteImage gray;
+	CFloatImage grayF;
+	convertRGB2GrayImage(img_, gray);
+	TypeConvert(gray, grayF);
+	CTransform3x3 scale = CTransform3x3::Scale(1.* img_.Shape().width / _targetW,
+											   1.* img_.Shape().height/ _targetH);
+	
+	WarpGlobal(grayF, tinyImg, scale, eWarpInterpLinear);
+
+	 
 
 	/******** END TODO ********/
 
@@ -186,8 +196,51 @@ HOGFeatureExtractor::operator()(const CByteImage& img_) const
 	// Useful functions:
 	// convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
 
-	printf("TODO: Feature.cpp:198\n"); exit(EXIT_FAILURE); 
+	int xCells = img_.Shape().height / _cellSize;
+	int yCells = img_.Shape().width  / _cellSize;
 
+	CFloatImage HOGHist(xCells * yCells, _nAngularBins, 1);
+
+	CByteImage gray;
+	CFloatImage grayF;
+
+	convertRGB2GrayImage(img_, gray);
+	TypeConvert(gray, grayF);
+	CFloatImage identity = CFloatImage(1,1,1);
+	identity.Pixel(1,1,1) = 1;
+	
+	CFloatImage diffX, diffY;
+
+	ConvolveSeparable(grayF, diffX, _kernelDx, identity,	 1);
+	ConvolveSeparable(grayF, diffY, identity, _kernelDy,	 1);
+
+	for (int y = 0; y <grayF.Shape().height; y++)
+		for (int x = 0; x<grayF.Shape().width; x++) {
+			float gradInt = diffX.Pixel(x,y,1) * diffX.Pixel(x,y,1) + diffY.Pixel(x,y,1) * diffY.Pixel(x,y,1);
+			float angle = atan(diffY.Pixel(x,y,1) / diffX.Pixel(x,y,1));
+			// Fit in the bins
+			int a = floor(angle / 3.14 * (_nAngularBins - 1)) + 1;
+			int p = y / _cellSize * yCells + x / _cellSize;
+			// Histogram
+			HOGHist.Pixel(p,a,1) += gradInt;
+		}
+
+	// Normalization 
+	float threshold = 1000;
+	for (int p = 0; p < HOGHist.Shape().height; p++){
+		float total = 0;
+		for (int a = 0; a < _nAngularBins; a++) {
+			if (HOGHist.Pixel(a,p,1) > threshold)
+				HOGHist.Pixel(a,p,1) = threshold;
+			// Sum for normalization
+			total += HOGHist.Pixel(a,p,1);
+		}
+		for (int a = 0;a< _nAngularBins; a++) {
+			HOGHist.Pixel(a,p,1) /= total;
+		}
+	}
+	
+	return HOGHist;
 	/******** END TODO ********/
 
 }
