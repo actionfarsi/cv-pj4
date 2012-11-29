@@ -195,47 +195,67 @@ HOGFeatureExtractor::operator()(const CByteImage& img_) const
 	// Useful functions:
 	// convertRGB2GrayImage, TypeConvert, WarpGlobal, Convolve
 
-	int xCells = img_.Shape().height / _cellSize;
-	int yCells = img_.Shape().width  / _cellSize;
+	
+	int xCells = ceil(1.*img_.Shape().width  / _cellSize);
+	int yCells = ceil(1.*img_.Shape().height / _cellSize);
 
-	CFloatImage HOGHist(xCells * yCells, _nAngularBins, 1);
+	CFloatImage HOGHist(xCells, yCells, _nAngularBins);
+	HOGHist.ClearPixels();
 
-	CByteImage gray;
-	CFloatImage grayF;
+	CByteImage gray(img_.Shape());
+	CFloatImage grayF(img_.Shape().width, img_.Shape().height, 1);
 
 	convertRGB2GrayImage(img_, gray);
 	TypeConvert(gray, grayF);
-	CFloatImage identity = CFloatImage(1,1,1);
-	identity.Pixel(1,1,1) = 1;
+
+	CFloatImage diffX( img_.Shape()), diffY( img_.Shape());
+
+	Convolve(grayF, diffX, _kernelDx);
+	Convolve(grayF, diffY, _kernelDy);
 	
-	CFloatImage diffX, diffY;
-
-	ConvolveSeparable(grayF, diffX, _kernelDx, identity,	 1);
-	ConvolveSeparable(grayF, diffY, identity, _kernelDy,	 1);
-
-	for (int y = 0; y <grayF.Shape().height; y++)
+	CFloatImage grad(grayF.Shape()), grad2(grayF.Shape());
+	CFloatImage angl(grayF.Shape()), angl2(grayF.Shape());
+	
+	for (int y = 0; y <grayF.Shape().height; y++){
 		for (int x = 0; x<grayF.Shape().width; x++) {
-			float gradInt = diffX.Pixel(x,y,1) * diffX.Pixel(x,y,1) + diffY.Pixel(x,y,1) * diffY.Pixel(x,y,1);
-			float angle = atan(diffY.Pixel(x,y,1) / diffX.Pixel(x,y,1));
-			// Fit in the bins
-			int a = floor(angle / 3.14 * (_nAngularBins - 1)) + 1;
-			int p = y / _cellSize * yCells + x / _cellSize;
-			// Histogram
-			HOGHist.Pixel(p,a,1) += gradInt;
+			grad2.Pixel(x,y,0) = (diffX.Pixel(x,y,0) * diffX.Pixel(x,y,0) +
+							     diffY.Pixel(x,y,0) * diffY.Pixel(x,y,0));
+			angl2.Pixel(x,y,0) = atan(diffY.Pixel(x,y,0) / abs(diffY.Pixel(x,y,0)));
 		}
+	}
 
-	// Normalization 
-	float threshold = 1000;
-	for (int p = 0; p < HOGHist.Shape().height; p++){
-		float total = 0;
-		for (int a = 0; a < _nAngularBins; a++) {
-			if (HOGHist.Pixel(a,p,1) > threshold)
-				HOGHist.Pixel(a,p,1) = threshold;
-			// Sum for normalization
-			total += HOGHist.Pixel(a,p,1);
+	// Bilinear Filter
+	ConvolveSeparable(grad2, grad, ConvolveKernel_121,ConvolveKernel_121,1);
+	ConvolveSeparable(angl2, angl, ConvolveKernel_121,ConvolveKernel_121,1);
+	//WriteFile(diffX, "angle.tga");
+	//WriteFile(diffY, "angleG.tga");
+
+	for (int y = 0; y <grayF.Shape().height; y++){
+		for (int x = 0; x<grayF.Shape().width; x++) {
+			// Fit in the bins
+			int a = angl.Pixel(x,y,0) / 3.14 * (_nAngularBins) + _nAngularBins/2;		
+			// Histogram
+			HOGHist.Pixel(floor(1.*x / _cellSize),
+						  floor(1.*y / _cellSize),
+						  a) += grad.Pixel(x,y,0);
 		}
-		for (int a = 0;a< _nAngularBins; a++) {
-			HOGHist.Pixel(a,p,1) /= total;
+	}
+	
+	// Normalization 
+	float threshold = 0.7;
+	for (int y = 0; y < yCells; y++){
+		for (int x = 0; x < xCells; x++){
+			float total = 0;
+			for (int a = 0; a < _nAngularBins; a++) {
+				if (HOGHist.Pixel(x,y,a) > threshold)
+					HOGHist.Pixel(x,y,a) = threshold;
+				// Sum for normalization
+				total += HOGHist.Pixel(x,y,a);
+			}
+			for (int a = 0;a< _nAngularBins; a++) {
+				HOGHist.Pixel(x,y,a) /= total;
+				
+			}
 		}
 	}
 	
