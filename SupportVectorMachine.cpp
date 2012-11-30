@@ -31,14 +31,14 @@ void
 SupportVectorMachine::train(const std::vector<float>& labels, const FeatureSet& fset, double C)
 {	
 	if(labels.size() != fset.size()) throw std::runtime_error("Database size is different from feature set size!");
-	printf("fsize:%d\n",fset.size());
+//	printf("fsize:%d\n",fset.size());
 	_fVecShape = fset[0].Shape();
 
 	// Figure out size and number of feature vectors
 	int nVecs = labels.size();
 	CShape shape = fset[0].Shape();
 	int dim = shape.width * shape.height * shape.nBands;
-	printf("dim:%d\n",dim);
+//	printf("dim:%d\n",dim);
 	// Parameters for SVM
 	svm_parameter parameter;
 	parameter.svm_type = C_SVC;
@@ -362,8 +362,52 @@ SupportVectorMachine::predictSlidingWindow(const Feature& feat) const
 	// Useful functions:
 	// Convolve, BandSelect, this->getWeights(), this->getBiasTerm()
 
-	printf("TODO: SupportVectorMachine.cpp:274\n"); exit(EXIT_FAILURE); 
+	//printf("TODO: SupportVectorMachine.cpp:274\n"); exit(EXIT_FAILURE); 
+	//get band size
+	int nSize=feat.Shape().nBands;
+	//declar features
+	Feature weightVec(_fVecShape);
+	weightVec.ClearPixels();
+	Feature featVec(_fVecShape);
+	featVec.ClearPixels();
+	Feature resultVec(_fVecShape);
+	resultVec.ClearPixels();
 
+	/*
+	Feature invert(3,3,1);
+	invert.Pixel(0,0,1)=0;
+	invert.Pixel(1,0,1)=0;*/
+
+	for(int b=0; b<nSize; b++){
+		//iterate through each band
+		BandSelect(this->getWeights(),weightVec,0,b);
+		BandSelect(feat,featVec,0,b);
+	//	printf("BEFORE: w:%d, h:%d, size: \n\r",weightVec.Shape().width,weightVec.Shape().height);
+		//sets the origin by diving the width and height by 2
+		weightVec.origin[0]=ceil((double)weightVec.Shape().width/2);
+		weightVec.origin[1]=ceil((double)weightVec.Shape().height/2);
+	
+		//printf("x:%d, y:%d, size: \n\r",featVec.origin[0],featVec.origin[1]);
+		/convolve
+		Convolve(featVec,resultVec,weightVec);
+
+		for(int x=0; x<feat.Shape().width; x++){
+			for(int y=0; y<feat.Shape().height; y++){
+				//tally up score
+				score.Pixel(x,y,b)+=resultVec.Pixel(x,y,b);
+			}
+		}
+	
+	}
+	//subtract final bias term
+	//for(int b=0; b<nSize; b++){
+	for(int x=0; x<feat.Shape().width; x++){
+			for(int y=0; y<feat.Shape().height; y++){
+				score.Pixel(x,y,0)=score.Pixel(x,y,0)-this->getBiasTerm();
+			}
+	}
+	//}
+	
 	/******** END TODO ********/
 
 	return score;
