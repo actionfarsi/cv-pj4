@@ -31,14 +31,14 @@ void
 SupportVectorMachine::train(const std::vector<float>& labels, const FeatureSet& fset, double C)
 {	
 	if(labels.size() != fset.size()) throw std::runtime_error("Database size is different from feature set size!");
-
+//	printf("fsize:%d\n",fset.size());
 	_fVecShape = fset[0].Shape();
 
 	// Figure out size and number of feature vectors
 	int nVecs = labels.size();
 	CShape shape = fset[0].Shape();
 	int dim = shape.width * shape.height * shape.nBands;
-
+//	printf("dim:%d\n",dim);
 	// Parameters for SVM
 	svm_parameter parameter;
 	parameter.svm_type = C_SVC;
@@ -66,15 +66,16 @@ SupportVectorMachine::train(const std::vector<float>& labels, const FeatureSet& 
 	if(_data) delete [] _data;
 
 	/******** BEGIN TODO ********/
-	// Copy the data used for training the SVM into the libsvm data structures "problem".
-	// Put the feature vectors in _data and labels in problem.y. Also, problem.x[k]
-	// should point to the address in _data where the k-th feature vector starts (i.e.,
-	// problem.x[k] = &_data[starting index of k-th feature])
+	// Copy the data used for training the SVM into the libsvm data structures.
+	// Put the feature vectors in _data.value and labels in problem.y
 	//
 	// Hint:
 	// * Don't forget to set _data[].index to the corresponding dimension in
 	//   the original feature vector. You also need to set _data[].index to -1
 	//   right after the last element of each feature vector
+
+
+
 
 	// Vector containing all feature vectors. svm_node is a struct with
 	// two fields, index and value. Index entry indicates position 
@@ -83,8 +84,114 @@ SupportVectorMachine::train(const std::vector<float>& labels, const FeatureSet& 
 	// the last one being simply to indicate that the feature has ended by setting the index
 	// entry to -1
 	_data = new svm_node[nVecs * (dim + 1)]; 
+	//int pos=0;
+	//int currBand=0;
+	//int currRow=0;
+	//int currCol=0;
+	//int first=0;
+	//for(int j=0; j<nVecs*(dim + 1); j++){
 
-	printf("TODO: SupportVectorMachine.cpp:87\n"); exit(EXIT_FAILURE); 
+
+	//	//go through each vector by counting pos
+	//	if(pos<dim){
+	//		_data[j].index=pos;
+	//		pos++;
+	//	}else{
+	//		//reset when position is beyond that of dim
+	//		_data[j].index=-1; //this is the actual last one
+	//		pos=0;
+	//	}
+	//	int xval,yval,bval;
+	//	if((currBand+1)<shape.nBands){
+	//		xval=currCol;
+	//		yval=currRow;
+	//		if(first){
+	//		bval=currBand;
+	//		currBand++; //only band value changes, x any y doesnt
+	//		first=1;
+	//		}else{
+	//			currBand++; //only band value changes, x any y doesnt
+	//			bval=currBand;
+	//		}
+	//	}else{
+	//		if((currCol+1)<shape.width){
+	//		//all bands done, on to next x
+	//		currCol++;
+	//	    //row remains same
+	//		
+	//		}else{
+	//		//down with all value in row, next y
+	//		currCol=0;
+	//		currRow++; //increment row
+	//		currBand=0;
+	//		}
+	//		xval=currCol;
+	//		yval=currRow;
+	//		currBand=0; //reset currBand so we do the other bands as well
+	//		bval=currBand;
+	//	}
+	//	//xval=currRow*shape.width*shape.nBands
+	//	////if j is less than width, then its the first row
+	//	//if(j<shape.width){
+	//	//	xval=_data[j].index;
+	//	//	yval=0;
+	//	//	bval=0;
+	//	//}else{
+	//	//	//use mod to get the x position
+	//	//	xval=(j) % shape.width;
+	//	//	//find y(row)
+	//	//	yval=floor((double)j+1 / shape.width);
+	//	//	if(yval>shape.height){
+	//	//	bval=floor((double)yval/shape.height);
+	//	//	//reduce yval
+	//	//	yval=yval-bval*shape.height;
+	//	//	}else{
+	//	//	bval=0;
+	//	//	}
+	//	//}
+
+
+
+	//	_data[j].value=fset[floor((double)j/(dim+1))].Pixel(xval,yval,bval);
+
+
+	//}
+	int d=0;
+	int pos=0;
+
+	for(int n=0; n<nVecs; n++){
+		for (int y=0; y<shape.height; y++){
+			for(int x=0; x<shape.width; x++){
+				for(int b=0; b<shape.nBands; b++){
+					if(pos<dim){
+						_data[d].index=pos;
+						pos++;
+						_data[d].value=fset[n].Pixel(x,y,b);
+						//printf("pos");
+					}
+					//if this is true, we add the value for index -1
+					if(pos==dim){
+						//printf("vec");
+						d++;
+						_data[d].index=-1;
+						pos=0;
+						//reset, end of vector
+						_data[d].value=fset[n].Pixel(x,y,b);
+						problem.y[n]=labels[n];
+						problem.x[n]=&_data[d-dim];
+					
+					}
+					d++;
+
+				}
+			}
+		}
+	}
+	//for(int i=0; i<nVecs; i++){
+	//	problem.y[i]=labels[i];
+	//	problem.x[i]=&_data[i*(dim+1)];
+	//}
+	//printf("TODO: SupportVectorMachine.cpp:87\n"); exit(EXIT_FAILURE); 
 
 	/******** END TODO ********/
 
@@ -95,6 +202,7 @@ SupportVectorMachine::train(const std::vector<float>& labels, const FeatureSet& 
 	// Cleanup
 	delete [] problem.y;
 	delete [] problem.x;
+
 }
 
 float 
@@ -254,10 +362,55 @@ SupportVectorMachine::predictSlidingWindow(const Feature& feat) const
 	// Useful functions:
 	// Convolve, BandSelect, this->getWeights(), this->getBiasTerm()
 
-	printf("TODO: SupportVectorMachine.cpp:273\n"); exit(EXIT_FAILURE); 
+	//printf("TODO: SupportVectorMachine.cpp:274\n"); exit(EXIT_FAILURE); 
+	//get band size
+	int nSize=feat.Shape().nBands;
+	//declar features
+	Feature weightVec(_fVecShape);
+	weightVec.ClearPixels();
+	Feature featVec(_fVecShape);
+	featVec.ClearPixels();
+	Feature resultVec(_fVecShape);
+	resultVec.ClearPixels();
 
+	/*
+	Feature invert(3,3,1);
+	invert.Pixel(0,0,1)=0;
+	invert.Pixel(1,0,1)=0;*/
+
+	for(int b=0; b<nSize; b++){
+		//iterate through each band
+		BandSelect(this->getWeights(),weightVec,0,b);
+		BandSelect(feat,featVec,0,b);
+	//	printf("BEFORE: w:%d, h:%d, size: \n\r",weightVec.Shape().width,weightVec.Shape().height);
+		//sets the origin by diving the width and height by 2
+		weightVec.origin[0]=ceil((double)weightVec.Shape().width/2);
+		weightVec.origin[1]=ceil((double)weightVec.Shape().height/2);
+	
+		//printf("x:%d, y:%d, size: \n\r",featVec.origin[0],featVec.origin[1]);
+		/convolve
+		Convolve(featVec,resultVec,weightVec);
+
+		for(int x=0; x<feat.Shape().width; x++){
+			for(int y=0; y<feat.Shape().height; y++){
+				//tally up score
+				score.Pixel(x,y,b)+=resultVec.Pixel(x,y,b);
+			}
+		}
+	
+	}
+	//subtract final bias term
+	//for(int b=0; b<nSize; b++){
+	for(int x=0; x<feat.Shape().width; x++){
+			for(int y=0; y<feat.Shape().height; y++){
+				score.Pixel(x,y,0)=score.Pixel(x,y,0)-this->getBiasTerm();
+			}
+	}
+	//}
+	
 	/******** END TODO ********/
 
 	return score;
 }
 
+>>>>>>> origin/le

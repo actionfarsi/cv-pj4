@@ -299,4 +299,3 @@ HOGFeatureExtractor::render(const Feature& f) const
 	return hogImg;
 }
 
-
