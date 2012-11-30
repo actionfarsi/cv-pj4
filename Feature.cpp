@@ -77,8 +77,15 @@ TinyImageFeatureExtractor::operator()(const CByteImage& img_) const
 	// 
 	// Useful functions:
 	// convertRGB2GrayImage, TypeConvert, WarpGlobal
+	
+	CByteImage gray;
+	CFloatImage grayF;
+	convertRGB2GrayImage(img_, gray);
+	TypeConvert(gray, grayF);
+	CTransform3x3 scale = CTransform3x3::Scale(1.* img_.Shape().width / _targetW,
+											   1.* img_.Shape().height/ _targetH);
 
-	printf("TODO: Feature.cpp:80\n"); exit(EXIT_FAILURE); 
+	WarpGlobal(grayF, tinyImg, scale, eWarpInterpLinear);
 
 	/******** END TODO ********/
 
